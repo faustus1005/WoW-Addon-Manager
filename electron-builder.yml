@@ -1,0 +1,52 @@
+appId: com.wowaddonmanager.app
+productName: WoW Addon Manager
+copyright: Copyright © 2024 WoW Addon Manager
+
+directories:
+  buildResources: build
+  output: release
+
+# Bundle the runtime icon so the main process can load it via process.resourcesPath
+extraResources:
+  - from: resources/icon.png
+    to: icon.png
+
+files:
+  - out
+  - "!**/.eslintrc.{js,cjs}"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+  - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
+  - "!**/{.env,.env.*}"
+
+# Icon: place your 1024x1024 PNG as build/icon.png before packaging.
+# electron-builder auto-converts to .ico (Windows) and .icns (macOS).
+icon: build/icon.png
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: WoWAddonManager-${version}-Setup.exe
+
+mac:
+  target:
+    - target: dmg
+  artifactName: WoWAddonManager-${version}.dmg
+
+linux:
+  target:
+    - target: AppImage
+  artifactName: WoWAddonManager-${version}.AppImage
+  category: Utility
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: WoW Addon Manager
+  uninstallDisplayName: WoW Addon Manager
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+# Disable auto-update file generation (no publish server configured)
+publish: null
