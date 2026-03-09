@@ -19,8 +19,10 @@ import {
   UpdatePayload,
   UninstallPayload,
   LinkAddonPayload,
+  BrowseCategoriesPayload,
   WowFlavor,
   AddonSearchResult,
+  AddonCategory,
   normalizeVersion,
 } from '../shared/types'
 
@@ -91,18 +93,21 @@ export function registerIpcHandlers(win: BrowserWindow) {
   // ── Searching ────────────────────────────────────────────────────────────
 
   ipcMain.handle('addon:search', async (_e, payload: SearchPayload) => {
-    const { query, provider, flavor = 'retail', page = 1, pageSize = 20 } = payload
+    const { query, provider, flavor = 'retail', page = 1, pageSize = 20, categoryId, sortBy } = payload
     const results: AddonSearchResult[] = []
 
-    const providers = provider
-      ? [provider]
-      : ['wago', 'curseforge', 'wowinterface'] as const
+    // If browsing by category, only use CurseForge (only provider with category support)
+    const providers = categoryId
+      ? ['curseforge'] as const
+      : provider
+        ? [provider]
+        : ['wago', 'curseforge', 'wowinterface'] as const
 
     const searches = providers.map(async p => {
       try {
         switch (p) {
           case 'wago':        return await wago.search(query, flavor, page, pageSize)
-          case 'curseforge':  return await curseforge.search(query, flavor, page, pageSize)
+          case 'curseforge':  return await curseforge.search(query, flavor, page, pageSize, categoryId, sortBy)
           case 'wowinterface':return await wowinterface.search(query, flavor, page, pageSize)
         }
       } catch (err) {
@@ -117,8 +122,17 @@ export function registerIpcHandlers(win: BrowserWindow) {
       if (batch.status === 'fulfilled' && batch.value) results.push(...batch.value)
     }
 
-    // Sort by downloads desc
-    return results.sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0))
+    // If not using server-side sorting, sort by downloads desc
+    if (!sortBy || !categoryId) {
+      return results.sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0))
+    }
+    return results
+  })
+
+  // ── Categories ──────────────────────────────────────────────────────────
+
+  ipcMain.handle('addon:get-categories', async () => {
+    return curseforge.getCategories()
   })
 
   // GitHub repo lookup (direct URL / "owner/repo")

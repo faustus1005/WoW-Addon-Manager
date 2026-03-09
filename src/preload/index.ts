@@ -8,6 +8,7 @@ import type {
   InstalledAddon,
   WowInstallation,
   AddonSearchResult,
+  AddonCategory,
   SearchPayload,
   InstallPayload,
   UpdatePayload,
@@ -44,6 +45,8 @@ const api = {
     ipcRenderer.invoke('addon:search', payload),
   githubLookup: (ownerRepo: string): Promise<AddonSearchResult | null> =>
     ipcRenderer.invoke('addon:github-lookup', ownerRepo),
+  getCategories: (): Promise<AddonCategory[]> =>
+    ipcRenderer.invoke('addon:get-categories'),
 
   // Install / Update / Uninstall
   installAddon: (payload: InstallPayload): Promise<InstalledAddon> =>

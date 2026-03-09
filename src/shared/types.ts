@@ -106,12 +106,28 @@ export interface CheckUpdatesPayload {
   installationId: string
 }
 
+export type BrowseSortField = 'popularity' | 'name' | 'downloads' | 'updated'
+
 export interface SearchPayload {
   query: string
   provider?: AddonProvider
   flavor?: WowFlavor
   page?: number
   pageSize?: number
+  categoryId?: number
+  sortBy?: BrowseSortField
+}
+
+export interface AddonCategory {
+  id: number
+  name: string
+  slug: string
+  iconUrl?: string
+  parentId?: number
+}
+
+export interface BrowseCategoriesPayload {
+  flavor?: WowFlavor
 }
 
 export interface DownloadProgress {
