@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain } from 'electron'
 import path from 'path'
+import { pathToFileURL } from 'url'
 import { registerIpcHandlers } from './ipc-handlers'
 import { getSettings, patchSettings } from './store'
 import { findWowInstallations } from './wow-scanner'
@@ -21,13 +22,50 @@ function getIconPath(): string {
   return path.join(__dirname, '../../resources/icon.png')
 }
 
+/** Splash image path (bundled via extraResources). */
+function getSplashImagePath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'splash.png')
+  }
+  return path.join(__dirname, '../../resources/splash.png')
+}
+
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let updateTimer: ReturnType<typeof setInterval> | null = null
 
+// ── Splash screen ─────────────────────────────────────────────────────────
+
+const SPLASH_DURATION = 3000 // 3 seconds
+
+function showSplash(): BrowserWindow {
+  const splash = new BrowserWindow({
+    width: 480,
+    height: 560,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    icon: getIconPath(),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+
+  const imgUrl = pathToFileURL(getSplashImagePath()).href
+  const splashHtml = path.join(__dirname, 'splash.html')
+  splash.loadFile(splashHtml, { query: { img: imgUrl } })
+  splash.once('ready-to-show', () => splash.show())
+
+  return splash
+}
+
 // ── Window ─────────────────────────────────────────────────────────────────
 
-function createWindow(startHidden = false) {
+function createWindow(startHidden = false, splash?: BrowserWindow) {
   const ICON = getIconPath()
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -56,7 +94,19 @@ function createWindow(startHidden = false) {
 
   mainWindow.once('ready-to-show', () => {
     if (!startHidden) {
-      mainWindow!.show()
+      if (splash) {
+        // Wait for splash duration, then transition
+        const elapsed = Date.now() - splashStart
+        const remaining = Math.max(0, SPLASH_DURATION - elapsed)
+        setTimeout(() => {
+          splash.destroy()
+          mainWindow!.show()
+        }, remaining)
+      } else {
+        mainWindow!.show()
+      }
+    } else if (splash) {
+      splash.destroy()
     }
     autoDetectWow()
   })
@@ -88,7 +138,7 @@ function createTray() {
   }
 
   tray = new Tray(trayIcon)
-  tray.setToolTip('WoW Addon Manager')
+  tray.setToolTip('WoW Warden')
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Open',  click: () => { mainWindow?.show(); mainWindow?.focus() } },
@@ -158,11 +208,20 @@ function applyLoginItemSetting() {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
+let splashStart = 0
+
 app.whenReady().then(() => {
   // If launched by the OS at login, start hidden in the tray
   const startHidden = process.argv.includes('--autostart')
 
-  createWindow(startHidden)
+  // Show splash screen (skip when starting hidden at login)
+  let splash: BrowserWindow | undefined
+  if (!startHidden) {
+    splashStart = Date.now()
+    splash = showSplash()
+  }
+
+  createWindow(startHidden, splash)
   createTray()
   registerIpcHandlers(mainWindow!)
   applyLoginItemSetting()
