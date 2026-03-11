@@ -9041,6 +9041,11 @@ function AppProvider({ children }) {
     }
   }, [state.settings, state.activeInstallationId, patchSettings, api]);
   reactExports.useEffect(() => {
+    const base = "WoW Warden";
+    const title = state.updateCount > 0 ? `${base} (${state.updateCount} update${state.updateCount !== 1 ? "s" : ""})` : base;
+    window.api.setWindowTitle(title);
+  }, [state.updateCount]);
+  reactExports.useEffect(() => {
     loadSettings();
     const unWow = api.onWowDetected(async (installations) => {
       await patchSettings({
@@ -9085,7 +9090,7 @@ function useApp() {
   return ctx;
 }
 function Titlebar() {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "drag-region flex items-center h-9 bg-wow-dark border-b border-gray-800 px-4 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "no-drag flex items-center gap-2 select-none pointer-events-none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-wow-gold text-sm font-bold tracking-wide", children: "⚔ WoW Addon Manager" }) }) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "drag-region flex items-center h-9 bg-wow-dark border-b border-gray-800 px-4 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "no-drag flex items-center gap-2 select-none pointer-events-none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-wow-gold text-sm font-bold tracking-wide", children: "⚔ WoW Warden" }) }) });
 }
 function Sidebar() {
   const { updateCount, installations, activeInstallationId, switchInstallation, isScanning, isCheckingUpdates } = useApp();
@@ -9572,6 +9577,7 @@ function AddonRow({ addon: initialAddon }) {
             ),
             addon.pinnedVersion && /* @__PURE__ */ jsxRuntimeExports.jsx(UnpinButton, { addon, onUnpinned: setAddon }),
             !addon.pinnedVersion && /* @__PURE__ */ jsxRuntimeExports.jsx(AutoUpdateToggle, { addon }),
+            addon.provider !== "unknown" && /* @__PURE__ */ jsxRuntimeExports.jsx(ChannelSelector, { addon, onChanged: setAddon }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(IgnoreToggle, { addon }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "button",
@@ -9656,6 +9662,47 @@ function IgnoreToggle({ addon }) {
       className: `btn-ghost text-xs py-1 px-3 ${addon.isIgnored ? "text-amber-400" : "text-gray-500"}`,
       onClick: toggle,
       children: addon.isIgnored ? "⊘ Ignored" : "○ Ignore"
+    }
+  );
+}
+function ChannelSelector({ addon, onChanged }) {
+  const { activeInstallationId } = useApp();
+  const handleChange = async (e2) => {
+    e2.stopPropagation();
+    if (!activeInstallationId) return;
+    try {
+      const updated = await window.api.setChannel({
+        addonId: addon.id,
+        installationId: activeInstallationId,
+        channel: e2.target.value
+      });
+      onChanged(updated);
+      zt.success(`${addon.name} set to ${e2.target.value} channel`);
+    } catch (err) {
+      zt.error(`Failed to set channel: ${err.message}`);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "label",
+    {
+      className: "flex items-center gap-2 text-xs text-gray-400",
+      onClick: (e2) => e2.stopPropagation(),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Channel:" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            className: "bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-xs text-gray-300 focus:border-wow-gold outline-none",
+            value: addon.channelPreference,
+            onChange: handleChange,
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "stable", children: "Stable" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "beta", children: "Beta" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "alpha", children: "Alpha" })
+            ]
+          }
+        )
+      ]
     }
   );
 }
@@ -10458,13 +10505,83 @@ function Settings() {
           }
         )
       ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(Section, { title: "Data", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Section, { title: "Data", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-3", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             className: "btn-secondary text-sm",
             onClick: scanAddons,
             children: "⟳ Rescan AddOns Directory"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: "btn-secondary text-sm",
+            onClick: async () => {
+              if (!activeInstallationId) {
+                zt.error("No active installation");
+                return;
+              }
+              try {
+                const result = await window.api.exportAddonList(activeInstallationId);
+                if (result) zt.success(`Exported ${result.count} addons`);
+              } catch (err) {
+                zt.error(`Export failed: ${err.message}`);
+              }
+            },
+            disabled: !activeInstallationId,
+            children: "↓ Export Addon List"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: "btn-secondary text-sm",
+            onClick: async () => {
+              if (!activeInstallationId) {
+                zt.error("No active installation");
+                return;
+              }
+              try {
+                const data = await window.api.importAddonList(activeInstallationId);
+                if (!data) return;
+                const tracked = data.addons.filter((a2) => a2.sourceId);
+                zt.success(
+                  `Loaded ${tracked.length} addon(s) from "${data.installationName}" (${data.flavor}). Use Browse to reinstall them from their original sources.`,
+                  { duration: 8e3 }
+                );
+                let installed = 0;
+                for (const addon of tracked) {
+                  try {
+                    const results = await window.api.searchAddons({
+                      query: addon.name,
+                      provider: addon.provider === "unknown" ? void 0 : addon.provider
+                    });
+                    const match = results.find(
+                      (r2) => r2.externalId === addon.sourceId && r2.provider === addon.provider
+                    ) ?? results.find(
+                      (r2) => r2.provider === addon.provider && r2.name.toLowerCase() === addon.name.toLowerCase()
+                    );
+                    if (match) {
+                      await window.api.installAddon({
+                        result: match,
+                        installationId: activeInstallationId,
+                        channel: addon.channelPreference
+                      });
+                      installed++;
+                    }
+                  } catch {
+                  }
+                }
+                zt.success(`Installed ${installed} of ${tracked.length} addons`);
+                scanAddons();
+              } catch (err) {
+                zt.error(`Import failed: ${err.message}`);
+              }
+            },
+            disabled: !activeInstallationId,
+            children: "↑ Import Addon List"
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(

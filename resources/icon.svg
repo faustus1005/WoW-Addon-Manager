@@ -4,10 +4,12 @@
   <!-- Shield -->
   <path d="M64 16 L96 30 L96 64 Q96 90 64 112 Q32 90 32 64 L32 30 Z"
         fill="none" stroke="#ffd100" stroke-width="4"/>
-  <!-- Sword vertical -->
-  <line x1="64" y1="28" x2="64" y2="88" stroke="#ffd100" stroke-width="4" stroke-linecap="round"/>
-  <!-- Sword crossguard -->
-  <line x1="50" y1="52" x2="78" y2="52" stroke="#ffd100" stroke-width="4" stroke-linecap="round"/>
-  <!-- Sword pommel -->
-  <circle cx="64" cy="88" r="5" fill="#ffd100"/>
+  <!-- Wolf/Warden eye left -->
+  <circle cx="52" cy="48" r="4" fill="#4dc9f6"/>
+  <!-- Wolf/Warden eye right -->
+  <circle cx="76" cy="48" r="4" fill="#4dc9f6"/>
+  <!-- Wolf snout -->
+  <path d="M54 58 L64 68 L74 58" fill="none" stroke="#ffd100" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- W letter (Warden) -->
+  <text x="64" y="96" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="22" fill="#ffd100">W</text>
 </svg>
