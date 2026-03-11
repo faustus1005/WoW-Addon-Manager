@@ -1,6 +1,7 @@
 "use strict";
 const electron = require("electron");
 const path = require("path");
+const url = require("url");
 const fs = require("fs");
 const child_process = require("child_process");
 const crypto = require("crypto");
@@ -472,11 +473,11 @@ function scanAddons(installation) {
   }
   return result.sort((a, b) => a.name.localeCompare(b.name));
 }
-const TMP_DIR = path.join(process.env.TEMP ?? "/tmp", "wow-addon-manager");
+const TMP_DIR = path.join(process.env.TEMP ?? "/tmp", "wow-warden");
 function ensureTmpDir() {
   if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 }
-async function downloadFile(url, onProgress, headers) {
+async function downloadFile(url2, onProgress, headers) {
   ensureTmpDir();
   const tmpFile = path.join(TMP_DIR, `${crypto.randomUUID()}.zip`);
   return new Promise((resolve, reject) => {
@@ -486,7 +487,7 @@ async function downloadFile(url, onProgress, headers) {
         return;
       }
       const protocol = reqUrl.startsWith("https") ? https : http;
-      const opts = { headers: { "User-Agent": "WoWAddonManager/1.0", ...headers } };
+      const opts = { headers: { "User-Agent": "WoWWarden/1.0", ...headers } };
       protocol.get(reqUrl, opts, (res) => {
         if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           res.resume();
@@ -510,7 +511,7 @@ async function downloadFile(url, onProgress, headers) {
         promises.pipeline(res, out).then(() => resolve(tmpFile)).catch(reject);
       }).on("error", reject);
     };
-    makeRequest(url);
+    makeRequest(url2);
   });
 }
 function extractZip(zipPath, addonsPath) {
@@ -628,7 +629,7 @@ class WagoProvider extends BaseProvider {
       baseURL: WAGO_BASE,
       timeout: 15e3,
       headers: {
-        "User-Agent": "WoWAddonManager/1.0",
+        "User-Agent": "WoWWarden/1.0",
         "Accept": "application/json",
         ...apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
       }
@@ -707,12 +708,12 @@ class WagoProvider extends BaseProvider {
       const versions = [];
       for (const [ch, release] of Object.entries(releases)) {
         if (!release) continue;
-        const url = release.download_link ?? release.link;
-        if (!url) continue;
+        const url2 = release.download_link ?? release.link;
+        if (!url2) continue;
         versions.push({
           version: release.label,
           displayName: `${release.label} (${ch})`,
-          downloadUrl: url,
+          downloadUrl: url2,
           releaseDate: release.created_at,
           releaseType: ch
         });
@@ -775,7 +776,7 @@ class CurseForgeProvider extends BaseProvider {
       baseURL: CF_BASE,
       timeout: 15e3,
       headers: {
-        "User-Agent": "WoWAddonManager/1.0",
+        "User-Agent": "WoWWarden/1.0",
         "Accept": "application/json",
         "x-api-key": apiKey
       }
@@ -940,16 +941,16 @@ class WoWInterfaceProvider extends BaseProvider {
       baseURL: WOWI_BASE,
       timeout: 15e3,
       headers: {
-        "User-Agent": "WoWAddonManager/1.0",
+        "User-Agent": "WoWWarden/1.0",
         Accept: "application/json"
       }
     });
   }
   getThumbnail(thumbs) {
     if (!thumbs) return void 0;
-    const url = Array.isArray(thumbs) ? thumbs[0] : thumbs;
-    if (!url) return void 0;
-    return url.startsWith("http") ? url : `https:${url}`;
+    const url2 = Array.isArray(thumbs) ? thumbs[0] : thumbs;
+    if (!url2) return void 0;
+    return url2.startsWith("http") ? url2 : `https:${url2}`;
   }
   mapFile(f) {
     const id = String(f.UID);
@@ -1046,7 +1047,7 @@ class GitHubProvider extends BaseProvider {
       baseURL: GH_BASE,
       timeout: 15e3,
       headers: {
-        "User-Agent": "WoWAddonManager/1.0",
+        "User-Agent": "WoWWarden/1.0",
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
         ...token ? { Authorization: `Bearer ${token}` } : {}
@@ -1484,7 +1485,7 @@ function registerIpcHandlers(win) {
     }
     return data;
   });
-  electron.ipcMain.handle("shell:open-url", (_e, url) => electron.shell.openExternal(url));
+  electron.ipcMain.handle("shell:open-url", (_e, url2) => electron.shell.openExternal(url2));
   electron.ipcMain.handle("shell:open-path", (_e, p) => electron.shell.openPath(p));
   electron.ipcMain.handle("window:set-title", (_e, title) => {
     win.setTitle(title);
@@ -1596,7 +1597,7 @@ async function runBackgroundUpdateCheck(win) {
     if (totalAutoUpdated > 0) parts.push(`${totalAutoUpdated} addon${totalAutoUpdated > 1 ? "s" : ""} auto-updated`);
     if (totalPendingUpdates > 0) parts.push(`${totalPendingUpdates} update${totalPendingUpdates > 1 ? "s" : ""} available`);
     new electron.Notification({
-      title: "WoW Addon Manager",
+      title: "WoW Warden",
       body: parts.join(" · ")
     }).show();
   }
@@ -1608,10 +1609,39 @@ function getIconPath() {
   }
   return path.join(__dirname, "../../resources/icon.png");
 }
+function getSplashImagePath() {
+  if (electron.app.isPackaged) {
+    return path.join(process.resourcesPath, "splash.png");
+  }
+  return path.join(__dirname, "../../resources/splash.png");
+}
 let mainWindow = null;
 let tray = null;
 let updateTimer = null;
-function createWindow(startHidden = false) {
+const SPLASH_DURATION = 3e3;
+function showSplash() {
+  const splash = new electron.BrowserWindow({
+    width: 480,
+    height: 560,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    icon: getIconPath(),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  const imgUrl = url.pathToFileURL(getSplashImagePath()).href;
+  const splashHtml = path.join(__dirname, "splash.html");
+  splash.loadFile(splashHtml, { query: { img: imgUrl } });
+  splash.once("ready-to-show", () => splash.show());
+  return splash;
+}
+function createWindow(startHidden = false, splash) {
   const ICON = getIconPath();
   mainWindow = new electron.BrowserWindow({
     width: 1280,
@@ -1638,7 +1668,18 @@ function createWindow(startHidden = false) {
   }
   mainWindow.once("ready-to-show", () => {
     if (!startHidden) {
-      mainWindow.show();
+      if (splash) {
+        const elapsed = Date.now() - splashStart;
+        const remaining = Math.max(0, SPLASH_DURATION - elapsed);
+        setTimeout(() => {
+          splash.destroy();
+          mainWindow.show();
+        }, remaining);
+      } else {
+        mainWindow.show();
+      }
+    } else if (splash) {
+      splash.destroy();
     }
     autoDetectWow();
   });
@@ -1660,7 +1701,7 @@ function createTray() {
     trayIcon = electron.nativeImage.createEmpty();
   }
   tray = new electron.Tray(trayIcon);
-  tray.setToolTip("WoW Addon Manager");
+  tray.setToolTip("WoW Warden");
   tray.setContextMenu(
     electron.Menu.buildFromTemplate([
       { label: "Open", click: () => {
@@ -1721,9 +1762,15 @@ function applyLoginItemSetting() {
     args: launchAtLogin ? ["--autostart"] : []
   });
 }
+let splashStart = 0;
 electron.app.whenReady().then(() => {
   const startHidden = process.argv.includes("--autostart");
-  createWindow(startHidden);
+  let splash;
+  if (!startHidden) {
+    splashStart = Date.now();
+    splash = showSplash();
+  }
+  createWindow(startHidden, splash);
   createTray();
   registerIpcHandlers(mainWindow);
   applyLoginItemSetting();

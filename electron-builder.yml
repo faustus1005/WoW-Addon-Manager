@@ -1,6 +1,6 @@
-appId: com.wowaddonmanager.app
-productName: WoW Addon Manager
-copyright: Copyright © 2024 WoW Addon Manager
+appId: com.wowwarden.app
+productName: WoW Warden
+copyright: Copyright © 2024 WoW Warden
 
 directories:
   buildResources: build
@@ -10,6 +10,8 @@ directories:
 extraResources:
   - from: resources/icon.png
     to: icon.png
+  - from: resources/splash.png
+    to: splash.png
 
 files:
   - out
@@ -27,24 +29,24 @@ win:
     - target: nsis
       arch:
         - x64
-  artifactName: WoWAddonManager-${version}-Setup.exe
+  artifactName: WoWWarden-${version}-Setup.exe
 
 mac:
   target:
     - target: dmg
-  artifactName: WoWAddonManager-${version}.dmg
+  artifactName: WoWWarden-${version}.dmg
 
 linux:
   target:
     - target: AppImage
-  artifactName: WoWAddonManager-${version}.AppImage
+  artifactName: WoWWarden-${version}.AppImage
   category: Utility
 
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  shortcutName: WoW Addon Manager
-  uninstallDisplayName: WoW Addon Manager
+  shortcutName: WoW Warden
+  uninstallDisplayName: WoW Warden
   createDesktopShortcut: true
   createStartMenuShortcut: true
 
