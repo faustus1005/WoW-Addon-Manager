@@ -7,6 +7,7 @@ const api = {
   // WoW Detection
   findWowInstallations: () => electron.ipcRenderer.invoke("wow:find"),
   validateWowPath: (p) => electron.ipcRenderer.invoke("wow:validate-path", p),
+  addCustomInstallation: (p, flavor, displayName) => electron.ipcRenderer.invoke("wow:add-custom", p, flavor, displayName),
   browseWowPath: () => electron.ipcRenderer.invoke("wow:browse-path"),
   // Addon Scanning
   scanAddons: (installationId) => electron.ipcRenderer.invoke("addon:scan", installationId),

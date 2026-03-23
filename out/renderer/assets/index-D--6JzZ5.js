@@ -9997,7 +9997,12 @@ const FLAVOR_LABELS = {
   cataclysm: "Cataclysm Classic",
   classic_era: "Classic Era",
   burning_crusade: "Burning Crusade",
-  wrath: "Wrath Classic"
+  wrath: "Wrath Classic",
+  legion: "Legion (7.x)",
+  wod: "Warlords of Draenor (6.x)",
+  mop: "Mists of Pandaria (5.x)",
+  cata_private: "Cataclysm (4.x - Private)",
+  wotlk_private: "WotLK (3.x - Private)"
 };
 const SORT_OPTIONS = [
   { value: "popularity", label: "Popularity" },
@@ -10320,6 +10325,18 @@ function Browse() {
     ) })
   ] });
 }
+const CUSTOM_FLAVOR_OPTIONS = [
+  { value: "wotlk_private", label: "WotLK (3.3.5a)" },
+  { value: "cata_private", label: "Cataclysm (4.3.4)" },
+  { value: "mop", label: "Mists of Pandaria (5.x)" },
+  { value: "wod", label: "Warlords of Draenor (6.x)" },
+  { value: "legion", label: "Legion (7.3.5)" },
+  { value: "wrath", label: "Wrath Classic (official)" },
+  { value: "cataclysm", label: "Cata Classic (official)" },
+  { value: "burning_crusade", label: "The Burning Crusade (2.x)" },
+  { value: "classic_era", label: "Classic / Vanilla (1.x)" },
+  { value: "retail", label: "Retail (current)" }
+];
 function Settings() {
   const {
     settings,
@@ -10334,6 +10351,10 @@ function Settings() {
   const [wagoKey, setWagoKey] = reactExports.useState(settings?.wagoApiKey ?? "");
   const [pathInput, setPathInput] = reactExports.useState("");
   const [validating, setValidating] = reactExports.useState(false);
+  const [customPath, setCustomPath] = reactExports.useState("");
+  const [customFlavor, setCustomFlavor] = reactExports.useState("legion");
+  const [customName, setCustomName] = reactExports.useState("");
+  const [addingCustom, setAddingCustom] = reactExports.useState(false);
   if (!settings) return null;
   const saveKeys = async () => {
     await patchSettings({ curseForgApiKey: cfKey, wagoApiKey: wagoKey });
@@ -10369,6 +10390,33 @@ function Settings() {
     }
     for (const inst of found) await addInstallation(inst);
     zt.success(`Found ${found.length} installation(s)`);
+  };
+  const browseCustomPath = async () => {
+    const p2 = await window.api.browseWowPath();
+    if (p2) setCustomPath(p2);
+  };
+  const addCustomInstallation = async () => {
+    if (!customPath.trim()) return;
+    setAddingCustom(true);
+    try {
+      const { installation, error } = await window.api.addCustomInstallation(
+        customPath.trim(),
+        customFlavor,
+        customName.trim() || void 0
+      );
+      if (error || !installation) {
+        zt.error(error ?? "Could not create installation at that path.");
+        return;
+      }
+      await addInstallation(installation);
+      zt.success(`Added private server installation: ${installation.displayName}`);
+      setCustomPath("");
+      setCustomName("");
+    } catch (err) {
+      zt.error(err.message);
+    } finally {
+      setAddingCustom(false);
+    }
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-full overflow-y-auto page-enter", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-6 py-4 border-b border-gray-800 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-semibold text-gray-200", children: "Settings" }) }),
@@ -10406,6 +10454,52 @@ function Settings() {
           )
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn-ghost text-sm mt-2", onClick: autoDetect, children: "⟳ Auto-Detect Installations" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(Section, { title: "Private Server / Custom Installation", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-gray-500 text-xs mb-3", children: "For private servers (e.g. 7.3.5 Legion), point to your WoW game directory and select the matching expansion. Addons will be fetched from CurseForge for the correct game version." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                className: "input flex-1 text-sm",
+                placeholder: "Path to private server WoW directory",
+                value: customPath,
+                onChange: (e2) => setCustomPath(e2.target.value)
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn-secondary text-sm", onClick: browseCustomPath, children: "Browse…" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "select",
+              {
+                className: "input text-sm flex-1",
+                value: customFlavor,
+                onChange: (e2) => setCustomFlavor(e2.target.value),
+                children: CUSTOM_FLAVOR_OPTIONS.map((opt) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: opt.value, children: opt.label }, opt.value))
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                className: "input flex-1 text-sm",
+                placeholder: "Display name (optional)",
+                value: customName,
+                onChange: (e2) => setCustomName(e2.target.value)
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: "btn-primary text-sm",
+              onClick: addCustomInstallation,
+              disabled: addingCustom || !customPath.trim(),
+              children: addingCustom ? "Adding…" : "Add Private Server"
+            }
+          )
+        ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs(Section, { title: "Provider API Keys", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-gray-500 text-xs mb-3", children: [
@@ -10650,7 +10744,12 @@ function InstallationCard({
     cataclysm: "🌋",
     classic_era: "📜",
     burning_crusade: "👹",
-    wrath: "❄️"
+    wrath: "❄️",
+    legion: "🟢",
+    wod: "🔴",
+    mop: "🐼",
+    cata_private: "🌋",
+    wotlk_private: "❄️"
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `card px-4 py-3 flex items-center gap-3
       ${isActive ? "border-wow-gold/40" : ""}`, children: [

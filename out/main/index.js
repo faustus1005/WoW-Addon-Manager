@@ -153,6 +153,49 @@ function validateWowPath(suppliedPath) {
   }
   return { installations: [], error: "Could not identify a WoW installation at this path." };
 }
+function buildCustomInstallation(suppliedPath, flavor, displayName) {
+  if (!fs.existsSync(suppliedPath)) {
+    return { error: "Path does not exist." };
+  }
+  let addonsPath = path.join(suppliedPath, "Interface", "AddOns");
+  const basename = path.basename(suppliedPath);
+  if (basename === "AddOns") {
+    addonsPath = suppliedPath;
+  } else if (basename === "Interface") {
+    addonsPath = path.join(suppliedPath, "AddOns");
+  }
+  if (!fs.existsSync(addonsPath)) {
+    try {
+      fs.mkdirSync(addonsPath, { recursive: true });
+    } catch {
+      return { error: "Could not create AddOns directory at that path." };
+    }
+  }
+  const FLAVOR_DISPLAY_NAMES = {
+    retail: "Retail",
+    classic: "Classic (Cata)",
+    cataclysm: "Cataclysm Classic",
+    classic_era: "Classic Era",
+    burning_crusade: "Burning Crusade",
+    wrath: "Wrath Classic",
+    legion: "Legion (Private Server)",
+    wod: "Warlords of Draenor (Private Server)",
+    mop: "Mists of Pandaria (Private Server)",
+    cata_private: "Cataclysm (Private Server)",
+    wotlk_private: "WotLK (Private Server)"
+  };
+  const clientVersion = readClientVersion(suppliedPath);
+  return {
+    installation: {
+      id: crypto.randomUUID(),
+      displayName: displayName || FLAVOR_DISPLAY_NAMES[flavor] || `Private Server (${flavor})`,
+      path: suppliedPath,
+      flavor,
+      addonsPath,
+      clientVersion
+    }
+  };
+}
 const DEFAULT_SETTINGS = {
   wowInstallations: [],
   activeInstallationId: null,
@@ -615,7 +658,14 @@ const FLAVOR_MAP = {
   cataclysm: "cata",
   classic_era: "classic",
   burning_crusade: "tbc",
-  wrath: "wrath"
+  wrath: "wrath",
+  // Legacy private server flavors – Wago doesn't have specific game_version values
+  // for these, so fall back to 'retail' as these were retail-era expansions.
+  legion: "retail",
+  wod: "retail",
+  mop: "retail",
+  cata_private: "retail",
+  wotlk_private: "retail"
 };
 class WagoProvider extends BaseProvider {
   name = "wago";
@@ -751,16 +801,42 @@ const GAME_VERSION_TYPE_MAP = {
   // CF2WowGameVersionType.WOTLK
   classic: 77522,
   // CF2WowGameVersionType.Cata  (app's "classic" = Cata Classic)
-  cataclysm: 77522
+  cataclysm: 77522,
   // CF2WowGameVersionType.Cata
+  // Legacy private server flavors – these were retail-era expansions, so use the Retail
+  // gameVersionTypeId. Files will be further filtered by numeric game version prefix.
+  legion: 517,
+  // Legion (7.x) – search under Retail
+  wod: 517,
+  // Warlords of Draenor (6.x) – search under Retail
+  mop: 517,
+  // Mists of Pandaria (5.x) – search under Retail
+  cata_private: 517,
+  // Cataclysm private server (4.x) – search under Retail
+  wotlk_private: 517
+  // WotLK private server (3.x) – search under Retail
 };
 const CLASSIC_ONLY_MAJOR_VERSIONS = ["1.", "2.", "3.", "4.", "5."];
+const LEGACY_FLAVOR_VERSION_PREFIX = {
+  legion: "7.",
+  wod: "6.",
+  mop: "5.",
+  cata_private: "4.",
+  wotlk_private: "3."
+};
 function isFileCompatibleWithFlavor(file, flavor) {
-  if (!flavor || flavor !== "retail") return true;
+  if (!flavor) return true;
   if (!file.gameVersions || file.gameVersions.length === 0) return true;
   const numericVersions = file.gameVersions.filter((v) => /^\d/.test(v));
   if (numericVersions.length === 0) return true;
-  return numericVersions.some((v) => !CLASSIC_ONLY_MAJOR_VERSIONS.some((prefix) => v.startsWith(prefix)));
+  const legacyPrefix = LEGACY_FLAVOR_VERSION_PREFIX[flavor];
+  if (legacyPrefix) {
+    return numericVersions.some((v) => v.startsWith(legacyPrefix));
+  }
+  if (flavor === "retail") {
+    return numericVersions.some((v) => !CLASSIC_ONLY_MAJOR_VERSIONS.some((prefix) => v.startsWith(prefix)));
+  }
+  return true;
 }
 const CHANNEL_TYPE = {
   stable: [1],
@@ -847,7 +923,8 @@ class CurseForgeProvider extends BaseProvider {
   }
   mapMod(mod, channel = "stable", flavor) {
     const allowedTypes = CHANNEL_TYPE[channel];
-    const latestFile = (mod.latestFiles ?? []).filter((f) => allowedTypes.includes(f.releaseType)).filter((f) => isFileCompatibleWithFlavor(f, flavor)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0];
+    const channelFiles = (mod.latestFiles ?? []).filter((f) => allowedTypes.includes(f.releaseType)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime());
+    const latestFile = channelFiles.find((f) => isFileCompatibleWithFlavor(f, flavor)) ?? channelFiles[0];
     return {
       externalId: String(mod.id),
       provider: "curseforge",
@@ -1181,6 +1258,9 @@ function registerIpcHandlers(win) {
   });
   electron.ipcMain.handle("wow:validate-path", (_e, suppliedPath) => {
     return validateWowPath(suppliedPath);
+  });
+  electron.ipcMain.handle("wow:add-custom", (_e, suppliedPath, flavor, displayName) => {
+    return buildCustomInstallation(suppliedPath, flavor, displayName);
   });
   electron.ipcMain.handle("wow:browse-path", async () => {
     const result = await electron.dialog.showOpenDialog(win, {
