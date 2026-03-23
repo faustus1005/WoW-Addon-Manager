@@ -33,6 +33,8 @@ const GAME_VERSION_TYPE_MAP: Partial<Record<WowFlavor, number>> = {
   legion:            517,  // Legion (7.x) – search under Retail
   wod:               517,  // Warlords of Draenor (6.x) – search under Retail
   mop:               517,  // Mists of Pandaria (5.x) – search under Retail
+  cata_private:      517,  // Cataclysm private server (4.x) – search under Retail
+  wotlk_private:     517,  // WotLK private server (3.x) – search under Retail
 }
 
 // Major interface version prefixes that belong to non-Retail Classic flavors.
@@ -44,9 +46,11 @@ const CLASSIC_ONLY_MAJOR_VERSIONS = ['1.', '2.', '3.', '4.', '5.']
 
 /** Major version prefixes for legacy private server flavors */
 const LEGACY_FLAVOR_VERSION_PREFIX: Partial<Record<WowFlavor, string>> = {
-  legion: '7.',
-  wod:    '6.',
-  mop:    '5.',
+  legion:         '7.',
+  wod:            '6.',
+  mop:            '5.',
+  cata_private:   '4.',
+  wotlk_private:  '3.',
 }
 
 /** Returns true if the file looks compatible with the requested flavor */

@@ -248,6 +248,8 @@ export function buildCustomInstallation(
     legion: 'Legion (Private Server)',
     wod: 'Warlords of Draenor (Private Server)',
     mop: 'Mists of Pandaria (Private Server)',
+    cata_private: 'Cataclysm (Private Server)',
+    wotlk_private: 'WotLK (Private Server)',
   }
 
   const clientVersion = readClientVersion(suppliedPath)

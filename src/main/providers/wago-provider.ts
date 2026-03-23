@@ -32,6 +32,8 @@ const FLAVOR_MAP: Record<WowFlavor, string> = {
   legion:          'retail',
   wod:             'retail',
   mop:             'retail',
+  cata_private:    'retail',
+  wotlk_private:   'retail',
 }
 
 /** Actual shape returned by GET /external/addons/{id} */

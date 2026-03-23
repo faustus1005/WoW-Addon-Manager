@@ -5,13 +5,15 @@ import toast from 'react-hot-toast'
 
 /** Flavors available for custom / private-server installations */
 const CUSTOM_FLAVOR_OPTIONS: { value: WowFlavor; label: string }[] = [
-  { value: 'legion',          label: 'Legion (7.x)' },
-  { value: 'wod',             label: 'Warlords of Draenor (6.x)' },
+  { value: 'wotlk_private',   label: 'WotLK (3.3.5a)' },
+  { value: 'cata_private',    label: 'Cataclysm (4.3.4)' },
   { value: 'mop',             label: 'Mists of Pandaria (5.x)' },
-  { value: 'wrath',           label: 'Wrath of the Lich King (3.x)' },
+  { value: 'wod',             label: 'Warlords of Draenor (6.x)' },
+  { value: 'legion',          label: 'Legion (7.3.5)' },
+  { value: 'wrath',           label: 'Wrath Classic (official)' },
+  { value: 'cataclysm',       label: 'Cata Classic (official)' },
   { value: 'burning_crusade', label: 'The Burning Crusade (2.x)' },
   { value: 'classic_era',     label: 'Classic / Vanilla (1.x)' },
-  { value: 'cataclysm',       label: 'Cataclysm (4.x)' },
   { value: 'retail',          label: 'Retail (current)' },
 ]
 
@@ -434,6 +436,8 @@ function InstallationCard({
     legion:        '🟢',
     wod:           '🔴',
     mop:           '🐼',
+    cata_private:  '🌋',
+    wotlk_private: '❄️',
   }
 
   return (

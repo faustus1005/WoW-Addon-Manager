@@ -10,6 +10,8 @@ export type WowFlavor =
   | 'legion'
   | 'wod'
   | 'mop'
+  | 'cata_private'
+  | 'wotlk_private'
 
 export interface WowInstallation {
   id: string
