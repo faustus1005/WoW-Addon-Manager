@@ -27,6 +27,11 @@ const FLAVOR_MAP: Record<WowFlavor, string> = {
   classic_era:     'classic',
   burning_crusade: 'tbc',
   wrath:           'wrath',
+  // Legacy private server flavors – Wago doesn't have specific game_version values
+  // for these, so fall back to 'retail' as these were retail-era expansions.
+  legion:          'retail',
+  wod:             'retail',
+  mop:             'retail',
 }
 
 /** Actual shape returned by GET /external/addons/{id} */

@@ -7,6 +7,9 @@ export type WowFlavor =
   | 'burning_crusade'
   | 'wrath'
   | 'cataclysm'
+  | 'legion'
+  | 'wod'
+  | 'mop'
 
 export interface WowInstallation {
   id: string

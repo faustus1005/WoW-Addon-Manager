@@ -4,7 +4,7 @@
  */
 import { ipcMain, BrowserWindow, shell, dialog } from 'electron'
 import fs from 'fs'
-import { findWowInstallations, validateWowPath } from './wow-scanner'
+import { findWowInstallations, validateWowPath, buildCustomInstallation } from './wow-scanner'
 import { scanAddons } from './addon-scanner'
 import { installAddon, uninstallAddon } from './addon-installer'
 import { getSettings, patchSettings, getInstalledAddons, saveInstalledAddons } from './store'
@@ -71,6 +71,10 @@ export function registerIpcHandlers(win: BrowserWindow) {
 
   ipcMain.handle('wow:validate-path', (_e, suppliedPath: string) => {
     return validateWowPath(suppliedPath)
+  })
+
+  ipcMain.handle('wow:add-custom', (_e, suppliedPath: string, flavor: WowFlavor, displayName?: string) => {
+    return buildCustomInstallation(suppliedPath, flavor, displayName)
   })
 
   ipcMain.handle('wow:browse-path', async () => {

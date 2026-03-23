@@ -203,3 +203,63 @@ export function validateWowPath(
 
   return { installations: [], error: 'Could not identify a WoW installation at this path.' }
 }
+
+/**
+ * Build a custom installation for a private server directory.
+ * Accepts any path that contains an Interface/AddOns directory (or can have one created),
+ * and lets the user choose the flavor (e.g. legion, wod, mop).
+ */
+export function buildCustomInstallation(
+  suppliedPath: string,
+  flavor: WowFlavor,
+  displayName?: string,
+): { installation?: WowInstallation; error?: string } {
+  if (!fs.existsSync(suppliedPath)) {
+    return { error: 'Path does not exist.' }
+  }
+
+  // Check if the path itself is an AddOns-style dir, or if it has Interface/AddOns
+  let addonsPath = path.join(suppliedPath, 'Interface', 'AddOns')
+
+  // Also check if they pointed directly at an Interface or AddOns folder
+  const basename = path.basename(suppliedPath)
+  if (basename === 'AddOns') {
+    addonsPath = suppliedPath
+  } else if (basename === 'Interface') {
+    addonsPath = path.join(suppliedPath, 'AddOns')
+  }
+
+  // Create AddOns dir if it doesn't exist
+  if (!fs.existsSync(addonsPath)) {
+    try {
+      fs.mkdirSync(addonsPath, { recursive: true })
+    } catch {
+      return { error: 'Could not create AddOns directory at that path.' }
+    }
+  }
+
+  const FLAVOR_DISPLAY_NAMES: Record<WowFlavor, string> = {
+    retail: 'Retail',
+    classic: 'Classic (Cata)',
+    cataclysm: 'Cataclysm Classic',
+    classic_era: 'Classic Era',
+    burning_crusade: 'Burning Crusade',
+    wrath: 'Wrath Classic',
+    legion: 'Legion (Private Server)',
+    wod: 'Warlords of Draenor (Private Server)',
+    mop: 'Mists of Pandaria (Private Server)',
+  }
+
+  const clientVersion = readClientVersion(suppliedPath)
+
+  return {
+    installation: {
+      id: randomUUID(),
+      displayName: displayName || FLAVOR_DISPLAY_NAMES[flavor] || `Private Server (${flavor})`,
+      path: suppliedPath,
+      flavor,
+      addonsPath,
+      clientVersion,
+    },
+  }
+}
