@@ -225,10 +225,15 @@ export class CurseForgeProvider extends BaseProvider {
 
   private mapMod(mod: CFMod, channel: ReleaseChannel = 'stable', flavor?: WowFlavor): AddonSearchResult {
     const allowedTypes = CHANNEL_TYPE[channel]
-    const latestFile = (mod.latestFiles ?? [])
+    const channelFiles = (mod.latestFiles ?? [])
       .filter(f => allowedTypes.includes(f.releaseType))
-      .filter(f => isFileCompatibleWithFlavor(f, flavor))
-      .sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0]
+      .sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())
+
+    // Try flavor-compatible file first; for legacy flavors (Legion, WoD, etc.)
+    // latestFiles rarely contains old version-tagged files, so fall back to the
+    // newest file by release channel so the addon still appears in search results.
+    const latestFile = channelFiles.find(f => isFileCompatibleWithFlavor(f, flavor))
+      ?? channelFiles[0]
 
     return {
       externalId: String(mod.id),
