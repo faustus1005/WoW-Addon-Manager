@@ -7,6 +7,7 @@ import type {
   AppSettings,
   InstalledAddon,
   WowInstallation,
+  WowFlavor,
   AddonSearchResult,
   AddonCategory,
   AddonVersionInfo,
@@ -38,6 +39,8 @@ const api = {
     ipcRenderer.invoke('wow:find'),
   validateWowPath: (p: string): Promise<{ installations: WowInstallation[]; error?: string }> =>
     ipcRenderer.invoke('wow:validate-path', p),
+  addCustomInstallation: (p: string, flavor: WowFlavor, displayName?: string): Promise<{ installation?: WowInstallation; error?: string }> =>
+    ipcRenderer.invoke('wow:add-custom', p, flavor, displayName),
   browseWowPath: (): Promise<string | null> =>
     ipcRenderer.invoke('wow:browse-path'),
 

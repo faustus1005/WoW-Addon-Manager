@@ -1,7 +1,21 @@
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { WowInstallation } from '../types'
+import { WowInstallation, WowFlavor } from '../types'
 import toast from 'react-hot-toast'
+
+/** Flavors available for custom / private-server installations */
+const CUSTOM_FLAVOR_OPTIONS: { value: WowFlavor; label: string }[] = [
+  { value: 'wotlk_private',   label: 'WotLK (3.3.5a)' },
+  { value: 'cata_private',    label: 'Cataclysm (4.3.4)' },
+  { value: 'mop',             label: 'Mists of Pandaria (5.x)' },
+  { value: 'wod',             label: 'Warlords of Draenor (6.x)' },
+  { value: 'legion',          label: 'Legion (7.3.5)' },
+  { value: 'wrath',           label: 'Wrath Classic (official)' },
+  { value: 'cataclysm',       label: 'Cata Classic (official)' },
+  { value: 'burning_crusade', label: 'The Burning Crusade (2.x)' },
+  { value: 'classic_era',     label: 'Classic / Vanilla (1.x)' },
+  { value: 'retail',          label: 'Retail (current)' },
+]
 
 export default function Settings() {
   const {
@@ -14,6 +28,12 @@ export default function Settings() {
   const [wagoKey, setWagoKey] = useState(settings?.wagoApiKey ?? '')
   const [pathInput, setPathInput] = useState('')
   const [validating, setValidating] = useState(false)
+
+  // Custom / private server installation state
+  const [customPath, setCustomPath] = useState('')
+  const [customFlavor, setCustomFlavor] = useState<WowFlavor>('legion')
+  const [customName, setCustomName] = useState('')
+  const [addingCustom, setAddingCustom] = useState(false)
 
   if (!settings) return null
 
@@ -51,6 +71,35 @@ export default function Settings() {
     if (!found.length) { toast.error('No WoW installations auto-detected'); return }
     for (const inst of found) await addInstallation(inst)
     toast.success(`Found ${found.length} installation(s)`)
+  }
+
+  const browseCustomPath = async () => {
+    const p = await window.api.browseWowPath()
+    if (p) setCustomPath(p)
+  }
+
+  const addCustomInstallation = async () => {
+    if (!customPath.trim()) return
+    setAddingCustom(true)
+    try {
+      const { installation, error } = await window.api.addCustomInstallation(
+        customPath.trim(),
+        customFlavor,
+        customName.trim() || undefined,
+      )
+      if (error || !installation) {
+        toast.error(error ?? 'Could not create installation at that path.')
+        return
+      }
+      await addInstallation(installation)
+      toast.success(`Added private server installation: ${installation.displayName}`)
+      setCustomPath('')
+      setCustomName('')
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setAddingCustom(false)
+    }
   }
 
   return (
@@ -99,6 +148,52 @@ export default function Settings() {
           <button className="btn-ghost text-sm mt-2" onClick={autoDetect}>
             ⟳ Auto-Detect Installations
           </button>
+        </Section>
+
+        {/* ── Private Server / Custom Installation ── */}
+        <Section title="Private Server / Custom Installation">
+          <p className="text-gray-500 text-xs mb-3">
+            For private servers (e.g. 7.3.5 Legion), point to your WoW game directory and select
+            the matching expansion. Addons will be fetched from CurseForge for the correct game version.
+          </p>
+
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                className="input flex-1 text-sm"
+                placeholder="Path to private server WoW directory"
+                value={customPath}
+                onChange={e => setCustomPath(e.target.value)}
+              />
+              <button className="btn-secondary text-sm" onClick={browseCustomPath}>Browse…</button>
+            </div>
+
+            <div className="flex gap-2">
+              <select
+                className="input text-sm flex-1"
+                value={customFlavor}
+                onChange={e => setCustomFlavor(e.target.value as WowFlavor)}
+              >
+                {CUSTOM_FLAVOR_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <input
+                className="input flex-1 text-sm"
+                placeholder="Display name (optional)"
+                value={customName}
+                onChange={e => setCustomName(e.target.value)}
+              />
+            </div>
+
+            <button
+              className="btn-primary text-sm"
+              onClick={addCustomInstallation}
+              disabled={addingCustom || !customPath.trim()}
+            >
+              {addingCustom ? 'Adding…' : 'Add Private Server'}
+            </button>
+          </div>
         </Section>
 
         {/* ── API Keys ── */}
@@ -338,6 +433,11 @@ function InstallationCard({
     classic_era:   '📜',
     burning_crusade:'👹',
     wrath:         '❄️',
+    legion:        '🟢',
+    wod:           '🔴',
+    mop:           '🐼',
+    cata_private:  '🌋',
+    wotlk_private: '❄️',
   }
 
   return (

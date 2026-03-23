@@ -19,6 +19,11 @@ const FLAVOR_LABELS: Record<WowFlavor, string> = {
   classic_era:    'Classic Era',
   burning_crusade:'Burning Crusade',
   wrath:          'Wrath Classic',
+  legion:         'Legion (7.x)',
+  wod:            'Warlords of Draenor (6.x)',
+  mop:            'Mists of Pandaria (5.x)',
+  cata_private:   'Cataclysm (4.x - Private)',
+  wotlk_private:  'WotLK (3.x - Private)',
 }
 
 const SORT_OPTIONS: { value: BrowseSortField; label: string }[] = [

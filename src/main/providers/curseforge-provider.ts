@@ -28,6 +28,13 @@ const GAME_VERSION_TYPE_MAP: Partial<Record<WowFlavor, number>> = {
   wrath:           73713,  // CF2WowGameVersionType.WOTLK
   classic:         77522,  // CF2WowGameVersionType.Cata  (app's "classic" = Cata Classic)
   cataclysm:       77522,  // CF2WowGameVersionType.Cata
+  // Legacy private server flavors – these were retail-era expansions, so use the Retail
+  // gameVersionTypeId. Files will be further filtered by numeric game version prefix.
+  legion:            517,  // Legion (7.x) – search under Retail
+  wod:               517,  // Warlords of Draenor (6.x) – search under Retail
+  mop:               517,  // Mists of Pandaria (5.x) – search under Retail
+  cata_private:      517,  // Cataclysm private server (4.x) – search under Retail
+  wotlk_private:     517,  // WotLK private server (3.x) – search under Retail
 }
 
 // Major interface version prefixes that belong to non-Retail Classic flavors.
@@ -37,18 +44,35 @@ const GAME_VERSION_TYPE_MAP: Partial<Record<WowFlavor, number>> = {
 // Retail: 10.x (Dragonflight), 11.x (The War Within), 12.x (Midnight), and future majors.
 const CLASSIC_ONLY_MAJOR_VERSIONS = ['1.', '2.', '3.', '4.', '5.']
 
+/** Major version prefixes for legacy private server flavors */
+const LEGACY_FLAVOR_VERSION_PREFIX: Partial<Record<WowFlavor, string>> = {
+  legion:         '7.',
+  wod:            '6.',
+  mop:            '5.',
+  cata_private:   '4.',
+  wotlk_private:  '3.',
+}
+
 /** Returns true if the file looks compatible with the requested flavor */
 function isFileCompatibleWithFlavor(file: CFFile, flavor?: WowFlavor): boolean {
-  if (!flavor || flavor !== 'retail') return true  // Only filter for Retail
+  if (!flavor) return true
   if (!file.gameVersions || file.gameVersions.length === 0) return true
 
-  // Check if ANY numeric game version is Retail-compatible.
-  // Retail versions: 10.x (Dragonflight), 11.x (The War Within), 12.x (Midnight), etc.
-  // Classic flavors: 1.x (Era), 2.x (TBC), 3.x (Wrath), 4.x (Cata), 5.x (MoP Classic).
-  // Non-numeric labels (e.g. "Retail", "Classic") are ignored — only numeric versions decide.
   const numericVersions = file.gameVersions.filter(v => /^\d/.test(v))
   if (numericVersions.length === 0) return true  // No numeric versions to check, allow through
-  return numericVersions.some(v => !CLASSIC_ONLY_MAJOR_VERSIONS.some(prefix => v.startsWith(prefix)))
+
+  // Legacy private server flavors: only accept files tagged with the matching major version
+  const legacyPrefix = LEGACY_FLAVOR_VERSION_PREFIX[flavor]
+  if (legacyPrefix) {
+    return numericVersions.some(v => v.startsWith(legacyPrefix))
+  }
+
+  // Retail: filter out Classic-only files
+  if (flavor === 'retail') {
+    return numericVersions.some(v => !CLASSIC_ONLY_MAJOR_VERSIONS.some(prefix => v.startsWith(prefix)))
+  }
+
+  return true
 }
 
 // CurseForge release type: 1=release, 2=beta, 3=alpha
